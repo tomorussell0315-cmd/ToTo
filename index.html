@@ -7,6 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1B2A4A">
 <link rel="icon" href="icon-192.png">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
     --navy:#1B2A4A; --navy-deep:#101c33; --paper:#F7F4EC; --paper-dim:#EFEADD;
@@ -173,6 +174,7 @@
   <button data-view="questions">問題演習</button>
   <button data-view="scores">成績分析</button>
   <button data-view="plan">逆算計画</button>
+  <button data-view="sync">同期</button>
 </nav>
 
 <main>
@@ -289,6 +291,27 @@
     </div>
   </section>
 
+  <!-- SYNC -->
+  <section class="view" id="view-sync">
+    <h2 class="section-title">Googleスプレッドシートで同期</h2>
+    <div class="card" id="syncSetupCard">
+      <div class="field-label" style="margin-top:0;">Google OAuth クライアントID</div>
+      <input type="text" id="gsiClientIdInput" placeholder="xxxxx.apps.googleusercontent.com">
+      <button class="primary" id="saveClientIdBtn" style="width:100%; margin-top:8px;">保存</button>
+      <p style="font-size:11px; color:#7a7361; margin:8px 0 0;">Google Cloud Consoleで発行したクライアントIDを入力してください。一度保存すればこの端末では次回から不要です。</p>
+    </div>
+    <div class="card">
+      <div id="syncStatusText" style="font-size:13px; margin-bottom:10px;">未接続</div>
+      <div class="row">
+        <button class="primary" id="googleSignInBtn" style="flex:1;">Googleでログイン</button>
+        <button class="ghost" id="syncNowBtn" style="display:none;">今すぐ同期</button>
+      </div>
+    </div>
+    <div class="card">
+      <p style="font-size:11.5px; color:#7a7361; margin:0;">同じGoogleアカウントでスマホ・PC両方からログインすると、同じスプレッドシートにデータが保存され、両方の端末で同じ内容が見られるようになります。同時に別の端末で編集すると、後から同期した方の内容で上書きされる点にご注意ください。</p>
+    </div>
+  </section>
+
 </main>
 
 <script id="seed-data" type="application/json">
@@ -333,7 +356,11 @@ function loadData(){
   };
 }
 let data = loadData();
-function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function save(){
+  data.updatedAt = Date.now();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  scheduleSyncPush();
+}
 
 // ---------- Migration: merge any new seed topics/materials not yet present ----------
 (function migrateSeed(){
@@ -378,6 +405,7 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
     if(v==='questions') renderQuestions();
     if(v==='scores'){ renderScores(); renderWeak(); }
     if(v==='plan') renderPlan();
+    if(v==='sync') renderSync();
     if(v==='home') renderHome();
   });
 });
@@ -849,6 +877,154 @@ function renderPlan(){
     return `<tr><td>${escapeHtml(m.name)}</td><td>${remain}p</td><td><strong>${weekly}</strong>p/週</td></tr>`;
   }).join('');
 }
+
+// ---------- GOOGLE SHEETS SYNC ----------
+const GSI_CLIENT_ID_KEY = 'gsiClientId';
+const GSI_TOKEN_KEY = 'gsiAccessToken';
+const GSI_SPREADSHEET_KEY = 'gsiSpreadsheetId';
+const SHEET_FILE_NAME = 'study_ledger_sync';
+let gsiTokenClient = null;
+let gsiAccessToken = sessionStorage.getItem(GSI_TOKEN_KEY) || null;
+let syncPushTimer = null;
+let syncInProgress = false;
+
+function getClientId(){ return localStorage.getItem(GSI_CLIENT_ID_KEY) || ''; }
+
+document.getElementById('saveClientIdBtn').addEventListener('click', ()=>{
+  const v = document.getElementById('gsiClientIdInput').value.trim();
+  if(!v) return;
+  localStorage.setItem(GSI_CLIENT_ID_KEY, v);
+  initGsiTokenClient();
+  renderSync();
+});
+
+function initGsiTokenClient(){
+  const clientId = getClientId();
+  if(!clientId || typeof google === 'undefined' || !google.accounts) return;
+  gsiTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file',
+    callback: async (resp)=>{
+      if(resp.error){ setSyncStatus('ログインに失敗しました: '+resp.error); return; }
+      gsiAccessToken = resp.access_token;
+      sessionStorage.setItem(GSI_TOKEN_KEY, gsiAccessToken);
+      await performInitialSync();
+      renderSync();
+    }
+  });
+}
+
+document.getElementById('googleSignInBtn').addEventListener('click', ()=>{
+  if(!gsiTokenClient){ initGsiTokenClient(); }
+  if(!gsiTokenClient){ setSyncStatus('先にクライアントIDを保存してください'); return; }
+  gsiTokenClient.requestAccessToken();
+});
+document.getElementById('syncNowBtn').addEventListener('click', ()=>{ pushToSheet(); });
+
+function setSyncStatus(text){ document.getElementById('syncStatusText').textContent = text; }
+
+function renderSync(){
+  document.getElementById('gsiClientIdInput').value = getClientId();
+  document.getElementById('syncSetupCard').style.display = getClientId() ? 'none' : 'block';
+  const signedIn = !!gsiAccessToken;
+  document.getElementById('googleSignInBtn').textContent = signedIn ? '再ログイン' : 'Googleでログイン';
+  document.getElementById('syncNowBtn').style.display = signedIn ? 'inline-block' : 'none';
+  if(signedIn){
+    const spreadsheetId = localStorage.getItem(GSI_SPREADSHEET_KEY);
+    setSyncStatus(spreadsheetId ? '接続済み・最終更新: '+new Date(data.updatedAt||Date.now()).toLocaleString('ja-JP') : '接続済み・スプレッドシート未作成');
+  } else {
+    setSyncStatus(getClientId() ? '未ログイン' : 'クライアントIDを入力してください');
+  }
+}
+
+async function gsiFetch(url, options={}){
+  const res = await fetch(url, {
+    ...options,
+    headers: { ...(options.headers||{}), 'Authorization': 'Bearer '+gsiAccessToken }
+  });
+  if(!res.ok){ const t = await res.text(); throw new Error('API error '+res.status+': '+t); }
+  return res.json();
+}
+
+async function ensureSpreadsheet(){
+  let id = localStorage.getItem(GSI_SPREADSHEET_KEY);
+  if(id) return id;
+  // search Drive for an existing file created by this app
+  const q = encodeURIComponent(`name='${SHEET_FILE_NAME}' and trashed=false`);
+  const listRes = await gsiFetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`);
+  if(listRes.files && listRes.files.length>0){
+    id = listRes.files[0].id;
+  } else {
+    const createRes = await gsiFetch('https://sheets.googleapis.com/v4/spreadsheets', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({properties:{title: SHEET_FILE_NAME}})
+    });
+    id = createRes.spreadsheetId;
+  }
+  localStorage.setItem(GSI_SPREADSHEET_KEY, id);
+  return id;
+}
+
+async function pullFromSheet(){
+  const id = await ensureSpreadsheet();
+  try{
+    const res = await gsiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/A1`);
+    const raw = res.values && res.values[0] && res.values[0][0];
+    if(raw){ return JSON.parse(raw); }
+  }catch(e){ /* empty sheet or parse issue */ }
+  return null;
+}
+
+async function pushToSheet(){
+  if(!gsiAccessToken) return;
+  try{
+    syncInProgress = true;
+    const id = await ensureSpreadsheet();
+    await gsiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/A1?valueInputOption=RAW`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({values:[[JSON.stringify(data)]]})
+    });
+    setSyncStatus('同期しました・'+new Date().toLocaleString('ja-JP'));
+  }catch(e){
+    setSyncStatus('同期エラー: '+e.message);
+  } finally { syncInProgress = false; }
+}
+
+function scheduleSyncPush(){
+  if(!gsiAccessToken) return;
+  if(syncPushTimer) clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(()=>{ pushToSheet(); }, 2500);
+}
+
+async function performInitialSync(){
+  setSyncStatus('同期中...');
+  try{
+    const remote = await pullFromSheet();
+    if(remote && remote.updatedAt && (!data.updatedAt || remote.updatedAt > data.updatedAt)){
+      data = remote;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      renderHome(); renderTime(); renderTopics(); renderMaterials(); renderQuestions(); renderScores(); renderWeak(); renderPlan();
+      setSyncStatus('リモートの最新データを取得しました');
+    } else {
+      await pushToSheet();
+    }
+  }catch(e){
+    setSyncStatus('同期エラー: '+e.message);
+  }
+}
+
+window.addEventListener('load', ()=>{
+  if(getClientId()){
+    // wait briefly for the GIS script to finish loading
+    const tryInit = ()=>{
+      if(typeof google !== 'undefined' && google.accounts){ initGsiTokenClient(); if(gsiAccessToken){ renderSync(); } }
+      else setTimeout(tryInit, 300);
+    };
+    tryInit();
+  }
+});
 
 // ---------- init ----------
 renderSeals();
