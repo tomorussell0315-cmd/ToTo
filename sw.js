@@ -1,4 +1,4 @@
-const CACHE_NAME = 'study-ledger-v3';
+const CACHE_NAME = 'study-ledger-v6';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
