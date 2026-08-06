@@ -53,7 +53,16 @@
   button.pill{border:none; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer;}
   .pill.ok{background:#e4efe6; color:var(--green);}
   .pill.ng{background:#f6e4e2; color:var(--red);}
+  .pill.tri{background:#f3ead9; color:var(--brass-deep);}
   .pill.study{background:var(--brass); color:#fff;}
+  .back-link{font-size:12px; color:var(--brass-deep); background:none; border:none; cursor:pointer; padding:4px 0; margin-bottom:8px; display:flex; align-items:center; gap:4px;}
+  .drill-row{display:flex; justify-content:space-between; align-items:center; padding:11px 4px; border-bottom:1px dashed var(--line); cursor:pointer;}
+  .drill-row:last-child{border-bottom:none;}
+  .drill-row:active{background:var(--paper-dim);}
+  .drill-main{flex:1; min-width:0;}
+  .drill-title{font-size:13.5px; font-weight:600;}
+  .drill-sub{font-size:11px; color:#8a8370; margin-top:2px;}
+  .drill-arrow{color:#c2b9a3; font-size:16px; flex-shrink:0; margin-left:6px;}
   .empty{text-align:center; padding:26px 10px; color:#9a9382; font-size:12.5px;}
   .tag{font-family:var(--mono); font-size:10px; padding:2px 6px; border-radius:4px; background:var(--paper-dim); color:var(--brass-deep); border:1px solid var(--line); white-space:nowrap;}
   .imp-badge{font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:10px; color:#fff; flex-shrink:0;}
@@ -115,7 +124,7 @@
   .q-actions{display:flex; gap:6px; margin-top:6px;}
   .q-history{display:flex; gap:3px; margin-top:4px;}
   .hist-dot{width:8px; height:8px; border-radius:50%;}
-  .hist-dot.c{background:var(--green);} .hist-dot.x{background:var(--red);}
+  .hist-dot.c{background:var(--green);} .hist-dot.x{background:var(--red);} .hist-dot.d{background:var(--brass-deep);}
 
   /* Scores */
   .score-item{display:flex; justify-content:space-between; align-items:center; padding:9px 4px; border-bottom:1px dashed var(--line); font-size:13px;}
@@ -171,7 +180,6 @@
   <button data-view="time">学習時間</button>
   <button data-view="topics">論点</button>
   <button data-view="materials">教材</button>
-  <button data-view="questions">問題演習</button>
   <button data-view="scores">成績分析</button>
   <button data-view="plan">逆算計画</button>
   <button data-view="sync">同期</button>
@@ -203,7 +211,14 @@
   <section class="view" id="view-time">
     <h2 class="section-title">科目別 学習時間<button class="ghost" id="manageSubjectsBtn">科目を編集</button></h2>
     <div class="card" id="timerCard"></div>
-    <h2 class="section-title" style="margin-top:16px;">累計時間グラフ</h2>
+
+    <h2 class="section-title" style="margin-top:16px;">学習時間の集計</h2>
+    <div class="stat-grid" id="timeStatGrid"></div>
+
+    <h2 class="section-title" style="margin-top:16px;">日別グラフ(直近14日)</h2>
+    <div class="card" id="dailyChartCard"></div>
+
+    <h2 class="section-title" style="margin-top:16px;">科目別 累計時間</h2>
     <div class="card" id="chartCard"></div>
   </section>
 
@@ -214,35 +229,9 @@
     <div id="topicsBySubject"></div>
   </section>
 
-  <!-- MATERIALS (whole-book page progress) -->
+  <!-- MATERIALS (drill-down: book -> chapters -> questions) -->
   <section class="view" id="view-materials">
-    <h2 class="section-title">教材(書籍)の読了ページ管理</h2>
-    <p style="font-size:11.5px; color:#7a7361; margin-top:-4px;">教材ごとに読んだページ数を記録します。「論点」タブの章単位の周回管理とは別に、書籍を最初から最後まで読み進める進捗はこちらで管理します。</p>
-    <div class="card">
-      <div class="field-label" style="margin-top:0;">教材名</div>
-      <input type="text" id="matName" placeholder="例: 財務会計論(計算) テキスト11">
-      <div class="row" style="margin-top:8px; gap:8px;">
-        <select id="matSubject" style="flex:1;"></select>
-        <input type="number" id="matTotal" placeholder="総ページ数" style="flex:1;">
-      </div>
-      <button class="primary" id="addMaterialBtn" style="width:100%; margin-top:10px;">教材を追加</button>
-    </div>
-    <div id="materialsBySubject"></div>
-  </section>
-
-  <!-- QUESTIONS -->
-  <section class="view" id="view-questions">
-    <h2 class="section-title">問題演習ログ</h2>
-    <div class="card">
-      <div class="field-label">科目</div>
-      <select id="qSubject"></select>
-      <div class="field-label">章・論点</div>
-      <input type="text" id="qChapter" placeholder="例: 第3章 監査実施論">
-      <div class="field-label">問題の内容・番号(任意)</div>
-      <input type="text" id="qMemo" placeholder="例: 問題12 二重責任の原則">
-      <button class="primary" id="addQuestionBtn" style="width:100%; margin-top:10px;">問題を登録</button>
-    </div>
-    <div id="questionsBySubject"></div>
+    <div id="materialsRoot"></div>
   </section>
 
   <!-- SCORES -->
@@ -317,6 +306,9 @@
 <script id="seed-data" type="application/json">
 {"materials": [{"id": 1, "subject": "管理会計論", "name": "管理会計論 テキストI", "total": 256, "done": 0, "importance": "A"}, {"id": 2, "subject": "管理会計論", "name": "管理会計論 テキストII", "total": 334, "done": 0, "importance": "A"}, {"id": 3, "subject": "管理会計論", "name": "管理会計論 テキストIII", "total": 216, "done": 0, "importance": "A"}, {"id": 4, "subject": "管理会計論", "name": "管理会計論 テキストIV", "total": 236, "done": 0, "importance": "A"}, {"id": 5, "subject": "管理会計論", "name": "管理会計論 個別計算問題集I", "total": 328, "done": 0, "importance": "A"}, {"id": 6, "subject": "管理会計論", "name": "管理会計論 個別計算問題集II", "total": 160, "done": 0, "importance": "A"}, {"id": 7, "subject": "簿記入門", "name": "簿記入門2 テキスト", "total": 273, "done": 0, "importance": "A"}, {"id": 8, "subject": "簿記入門", "name": "簿記入門2 個別計算問題集", "total": 172, "done": 0, "importance": "A"}, {"id": 9, "subject": "財務会計論(理論)", "name": "財務会計論(理論) テキストI", "total": 336, "done": 0, "importance": "A"}, {"id": 10, "subject": "財務会計論(理論)", "name": "財務会計論(理論) テキストII", "total": 400, "done": 0, "importance": "A"}, {"id": 11, "subject": "財務会計論(理論)", "name": "財務会計論(理論) テキストIII", "total": 318, "done": 0, "importance": "A"}, {"id": 12, "subject": "財務会計論(計算)", "name": "財務会計論(計算) テキスト1〜10", "total": 2184, "done": 0, "importance": "A"}, {"id": 13, "subject": "財務会計論(計算)", "name": "財務会計論(計算) 個別計算問題集I", "total": 484, "done": 0, "importance": "A"}, {"id": 14, "subject": "財務会計論(計算)", "name": "財務会計論(計算) 個別計算問題集II", "total": 342, "done": 0, "importance": "A"}, {"id": 15, "subject": "財務会計論(計算)", "name": "財務会計論(計算) 個別計算問題集III", "total": 374, "done": 0, "importance": "A"}, {"id": 16, "subject": "財務会計論(計算)", "name": "財務会計論(計算) 短答対策問題集I", "total": 448, "done": 0, "importance": "A"}, {"id": 17, "subject": "財務会計論(計算)", "name": "財務会計論(計算) 短答対策問題集II", "total": 374, "done": 0, "importance": "A"}, {"id": 18, "subject": "企業法", "name": "企業法 短答対策問題集I", "total": 364, "done": 0, "importance": "A"}, {"id": 19, "subject": "企業法", "name": "企業法 短答対策問題集II", "total": 350, "done": 0, "importance": "A"}, {"id": 20, "subject": "監査論", "name": "監査論 短答対策問題集I", "total": 362, "done": 0, "importance": "A"}, {"id": 21, "subject": "監査論", "name": "監査論 短答対策問題集II", "total": 312, "done": 0, "importance": "A"}, {"id": 22, "subject": "管理会計論", "name": "管理会計論 短答対策問題集(計算編)I", "total": 310, "done": 0, "importance": "A"}, {"id": 23, "subject": "管理会計論", "name": "管理会計論 短答対策問題集(計算編)II", "total": 326, "done": 0, "importance": "A"}], "topics": [{"id": 1, "subject": "企業法", "name": "第1章 会社法総論", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 2, "subject": "企業法", "name": "第2章 機関", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 3, "subject": "企業法", "name": "第3章 株式", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 4, "subject": "企業法", "name": "第4章 設立", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 5, "subject": "企業法", "name": "第5章 資金調達", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 6, "subject": "企業法", "name": "第6章 株式会社の計算等", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 7, "subject": "企業法", "name": "第7章 持分会社", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 8, "subject": "企業法", "name": "第8章 組織再編行為等", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 9, "subject": "企業法", "name": "第9章 解散", "importance": "C", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 10, "subject": "企業法", "name": "第10章 会社法総則", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 11, "subject": "企業法", "name": "第11章 商法総則", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 12, "subject": "企業法", "name": "第12章 商行為法", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 13, "subject": "企業法", "name": "第13章 金融商品取引法", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 14, "subject": "企業法", "name": "第14章 外国会社", "importance": "C", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 15, "subject": "企業法", "name": "第15章 特例有限会社", "importance": "C", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 16, "subject": "監査論", "name": "第1章 監査総論", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 17, "subject": "監査論", "name": "第2章 監査主体論", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 18, "subject": "監査論", "name": "第3章 監査実施論", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 19, "subject": "監査論", "name": "第4章 監査報告論", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 20, "subject": "監査論", "name": "第5章 他者の作業の利用", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 21, "subject": "監査論", "name": "第6章 その他の諸論点 Ⅰ", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 22, "subject": "監査論", "name": "第7章 保証業務", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 23, "subject": "監査論", "name": "第8章 監査制度論", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 24, "subject": "監査論", "name": "第9章 特別目的の財務諸表の監査など", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 25, "subject": "監査論", "name": "第10章 情報技術(IT)環境下の監査", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 26, "subject": "監査論", "name": "第11章 財務諸表監査の歴史", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 27, "subject": "監査論", "name": "第12章 その他の諸論点 Ⅱ", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 28, "subject": "財務会計論(理論)", "name": "第1章 財務会計における基礎概念", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 29, "subject": "財務会計論(理論)", "name": "第2章 一般原則", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 30, "subject": "財務会計論(理論)", "name": "第3章 貸借対照表", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 31, "subject": "財務会計論(理論)", "name": "第4章 収益費用アプローチと資産負債アプローチ", "importance": "C", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 32, "subject": "財務会計論(理論)", "name": "第5章 損益会計", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 33, "subject": "財務会計論(理論)", "name": "第6章 貸借対照表総論", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 34, "subject": "財務会計論(理論)", "name": "第7章 資産会計総論", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 35, "subject": "財務会計論(理論)", "name": "第8章 流動資産", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 36, "subject": "財務会計論(理論)", "name": "第9章 繰延資産", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 37, "subject": "財務会計論(理論)", "name": "第10章 負債会計", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 38, "subject": "財務会計論(理論)", "name": "第11章 資本会計（伝統論）", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 39, "subject": "財務会計論(理論)", "name": "第12章 財務会計の概念フレームワーク", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 40, "subject": "財務会計論(理論)", "name": "第13章 会計基準等", "importance": "C", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 41, "subject": "財務会計論(理論)", "name": "第14章 セグメント情報等の開示に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 42, "subject": "財務会計論(理論)", "name": "第15章 関連当事者の開示に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 43, "subject": "財務会計論(理論)", "name": "第16章 賃貸等不動産の時価等の開示に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 44, "subject": "財務会計論(理論)", "name": "第17章 役員賞与に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 45, "subject": "財務会計論(理論)", "name": "第18章 時価の算定に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 46, "subject": "財務会計論(理論)", "name": "第19章 法人税，住民税及び事業税等に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 47, "subject": "財務会計論(理論)", "name": "第20章 一株当たり当期純利益に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 48, "subject": "財務会計論(理論)", "name": "第21章 棚卸資産の評価に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 49, "subject": "財務会計論(理論)", "name": "第22章 研究開発費等に係る会計基準", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 50, "subject": "財務会計論(理論)", "name": "第23章 固定資産の減損に係る会計基準", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 51, "subject": "財務会計論(理論)", "name": "第24章 退職給付に関する会計基準", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 52, "subject": "財務会計論(理論)", "name": "第25章 資産除去債務に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 53, "subject": "財務会計論(理論)", "name": "第26章 資本会計（会計基準論点）", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 54, "subject": "財務会計論(理論)", "name": "第27章 ストック", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 55, "subject": "財務会計論(理論)", "name": "第28章 外貨建取引等会計処理基準", "importance": "C", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 56, "subject": "財務会計論(理論)", "name": "第29章 税効果会計に係る会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 57, "subject": "財務会計論(理論)", "name": "第30章 収益認識に関する会計基準", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 58, "subject": "財務会計論(理論)", "name": "第31章 リースに関する会計基準", "importance": "C", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 59, "subject": "財務会計論(理論)", "name": "第32章 金融商品に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 60, "subject": "財務会計論(理論)", "name": "第33章 期中財務諸表に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 61, "subject": "財務会計論(理論)", "name": "第34章 会計方針の開示，会計上の変更及び誤謬の訂正に関する", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 62, "subject": "財務会計論(理論)", "name": "第35章 連結財務諸表に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 63, "subject": "財務会計論(理論)", "name": "第36章 持分法に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 64, "subject": "財務会計論(理論)", "name": "第37章 包括利益の表示に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 65, "subject": "財務会計論(理論)", "name": "第38章 企業結合に関する会計基準", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 66, "subject": "財務会計論(理論)", "name": "第39章 事業分離等に関する会計基準", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 67, "subject": "財務会計論(理論)", "name": "第40章 連結キャッシュ", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 68, "subject": "管理会計論", "name": "第1章 費目別計算", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 69, "subject": "管理会計論", "name": "第2章 部門別原価計算", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 70, "subject": "管理会計論", "name": "第3章 個別原価計算", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 71, "subject": "管理会計論", "name": "第4章 単純総合原価計算(工程別含む)", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 72, "subject": "管理会計論", "name": "第5章 組別", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 73, "subject": "管理会計論", "name": "第6章 標準原価計算", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 74, "subject": "管理会計論", "name": "第7章 直接原価計算", "importance": "C", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 75, "subject": "管理会計論", "name": "第8章 短期利益計画", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 76, "subject": "管理会計論", "name": "第9章 予算管理", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 77, "subject": "管理会計論", "name": "第10章 財務情報分析", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 78, "subject": "管理会計論", "name": "第11章 資金管理とキャッシュ", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 79, "subject": "管理会計論", "name": "第12章 戦術的意思決定", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 80, "subject": "管理会計論", "name": "第13章 戦略的意思決定", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 81, "subject": "管理会計論", "name": "第14章 分権化組織", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 82, "subject": "管理会計論", "name": "第15章 原価管理", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 83, "subject": "管理会計論", "name": "第16章 活動基準原価計算（ABC）", "importance": "B", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 84, "subject": "財務会計論(計算)", "name": "第1章 現金預金", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 85, "subject": "財務会計論(計算)", "name": "第2章 有形固定資産", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 86, "subject": "財務会計論(計算)", "name": "第3章 無形固定資産・投資その他の資産・繰延資産", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 87, "subject": "財務会計論(計算)", "name": "第4章 引当金", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 88, "subject": "財務会計論(計算)", "name": "第5章 商品売買・棚卸資産", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 89, "subject": "財務会計論(計算)", "name": "第6章 本支店会計", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 90, "subject": "財務会計論(計算)", "name": "第7章 1株当たり情報", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 91, "subject": "財務会計論(計算)", "name": "第8章 経過勘定", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 92, "subject": "財務会計論(計算)", "name": "第9章 有価証券(金融商品会計)", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 93, "subject": "財務会計論(計算)", "name": "第10章 手形取引(金融商品会計)", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 94, "subject": "財務会計論(計算)", "name": "第11章 債権債務(金融商品会計)", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 95, "subject": "財務会計論(計算)", "name": "第12章 貸倒引当金(金融商品会計)", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 96, "subject": "財務会計論(計算)", "name": "第13章 デリバティブ取引(金融商品会計)", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 97, "subject": "財務会計論(計算)", "name": "第14章 リース会計", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 98, "subject": "財務会計論(計算)", "name": "第15章 研究開発費・ソフトウェア", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 99, "subject": "財務会計論(計算)", "name": "第16章 減損会計", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 100, "subject": "財務会計論(計算)", "name": "第17章 税金及び税効果会計", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 101, "subject": "財務会計論(計算)", "name": "第18章 外貨建取引", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 102, "subject": "財務会計論(計算)", "name": "第19章 社債", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 103, "subject": "財務会計論(計算)", "name": "第20章 新株予約権付社債", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 104, "subject": "財務会計論(計算)", "name": "第21章 退職給付会計", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 105, "subject": "財務会計論(計算)", "name": "第22章 資産除去債務", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 106, "subject": "財務会計論(計算)", "name": "第23章 純資産", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 107, "subject": "財務会計論(計算)", "name": "第24章 分配可能額", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 108, "subject": "財務会計論(計算)", "name": "第25章 ストック・オプション等", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 109, "subject": "財務会計論(計算)", "name": "第26章 会計方針の開示・会計上の変更及び誤謬の訂正", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 110, "subject": "財務会計論(計算)", "name": "第27章 期中財務諸表", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 111, "subject": "財務会計論(計算)", "name": "第28章 収益認識", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 112, "subject": "財務会計論(計算)", "name": "第29章 連結会計", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 113, "subject": "財務会計論(計算)", "name": "第30章 持分法会計", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 114, "subject": "財務会計論(計算)", "name": "第31章 包括利益", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 115, "subject": "財務会計論(計算)", "name": "第32章 連結退職給付", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 116, "subject": "財務会計論(計算)", "name": "第33章 在外支店", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 117, "subject": "財務会計論(計算)", "name": "第34章 在外子会社", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 118, "subject": "財務会計論(計算)", "name": "第35章 セグメント情報", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 119, "subject": "財務会計論(計算)", "name": "第36章 個別キャッシュ・フロー計算書", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 120, "subject": "財務会計論(計算)", "name": "第37章 連結キャッシュ・フロー計算書", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 121, "subject": "財務会計論(計算)", "name": "第38章 在外連結キャッシュ・フロー計算書", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 122, "subject": "財務会計論(計算)", "name": "第39章 企業結合会計", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}, {"id": 123, "subject": "財務会計論(計算)", "name": "第40章 事業分離会計", "importance": "A", "stage": 0, "lastStudied": null, "nextReview": null}]}
 </script>
+<script id="question-label-bank" type="application/json">
+{"企業法": {"1": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15"], "2": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35"], "3": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24"], "4": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26"], "5": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26"], "6": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題15", "問題14", "問題16", "問題17", "問題18"], "7": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20"], "8": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題17", "問題13", "問題14", "問題15", "問題16", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24"], "9": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9"], "10": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13"], "11": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17"], "12": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17"], "13": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17"], "14": ["問題1", "問題2", "問題3", "問題4"], "15": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9"]}, "監査論": {"4": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56", "問題57", "問題58", "問題59", "問題60", "問題61", "問題62", "問題63", "問題64", "問題65"], "1": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33"], "2": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56", "問題57", "問題58", "問題59", "問題60", "問題61", "問題62", "問題63", "問題64", "問題65", "問題66", "問題67", "問題68", "問題69", "問題70", "問題71", "問題72", "問題73", "問題74", "問題75", "問題76", "問題77", "問題78", "問題79", "問題80", "問題81", "問題82", "問題83", "問題84", "問題85", "問題86", "問題87", "問題88", "問題89", "問題90", "問題91", "問題92", "問題93", "問題94", "問題95", "問題96", "問題97", "問題98", "問題99", "問題100", "問題101"], "3": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56", "問題57", "問題58", "問題59"], "12": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8"], "5": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56"], "6": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56", "問題57", "問題58", "問題59", "問題60", "問題61", "問題62", "問題63", "問題64", "問題65", "問題66", "問題67", "問題68"], "7": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56", "問題57", "問題58", "問題59", "問題60", "問題61", "問題62", "問題63", "問題64", "問題65", "問題66", "問題67", "問題68", "問題69", "問題70", "問題71", "問題72", "問題73", "問題74", "問題75", "問題76", "問題77", "問題78", "問題79", "問題80", "問題81", "問題82", "問題83", "問題84", "問題85", "問題86", "問題87", "問題88", "問題89", "問題90", "問題91", "問題92", "問題93", "問題94", "問題95", "問題96", "問題97", "問題98", "問題99", "問題100", "問題101", "問題102", "問題103", "問題104", "問題105", "問題106", "問題107", "問題108", "問題109", "問題110", "問題111", "問題112", "問題113", "問題114", "問題115", "問題116", "問題117", "問題118", "問題119", "問題120", "問題121", "問題122", "問題123"], "8": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56", "問題57", "問題58", "問題59", "問題60", "問題61", "問題62", "問題63", "問題64", "問題65", "問題66", "問題67", "問題68", "問題69", "問題70", "問題71", "問題72", "問題73", "問題74", "問題75", "問題76", "問題77", "問題78", "問題79", "問題80", "問題81", "問題82", "問題83", "問題84", "問題85", "問題86", "問題87", "問題88", "問題89", "問題90", "問題91", "問題92", "問題93", "問題94", "問題95", "問題96", "問題97", "問題98", "問題99"], "9": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15"], "10": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32"]}, "財務会計論(理論)": {"15": ["問題1", "問題2", "問題3", "問題4"], "32": ["問題5", "問題6", "問題1", "問題2", "問題14", "問題16", "問題4", "問題7", "問題8", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題52", "問題33", "問題34", "問題35", "問題36", "問題28", "問題29", "問題30", "問題31", "問題32", "問題37", "問題47", "問題48", "問題49", "問題50", "問題51", "問題53", "問題54", "問題55", "問題56", "問題3", "問題9", "問題10", "問題11", "問題12", "問題13", "問題15", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27"], "1": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41"], "29": ["問題7", "問題8", "問題23", "問題24", "問題25", "問題26", "問題27"], "35": ["問題9", "問題10", "問題13", "問題14", "問題22", "問題23", "問題24", "問題11", "問題12", "問題15", "問題5", "問題6", "問題7", "問題4", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56", "問題57", "問題58", "問題59", "問題60", "問題61", "問題62", "問題63", "問題64", "問題65", "問題66", "問題67", "問題68", "問題1", "問題2", "問題3", "問題8", "問題69", "問題70", "問題71", "問題72", "問題73", "問題74", "問題75", "問題76", "問題77", "問題78", "問題79", "問題80", "問題81", "問題82", "問題83", "問題84", "問題85", "問題86", "問題87", "問題88", "問題89", "問題90", "問題91", "問題92", "問題93", "問題94", "問題95", "問題96", "問題97", "問題98", "問題99", "問題100", "問題101", "問題102", "問題103", "問題104", "問題105"], "37": ["問題11", "問題12", "問題8", "問題2", "問題3", "問題26", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56", "問題57", "問題58", "問題62", "問題63", "問題59", "問題60", "問題61", "問題64", "問題65", "問題66", "問題5", "問題6", "問題7", "問題9", "問題1", "問題4", "問題10", "問題13", "問題14", "問題15", "問題16", "問題17", "問題67", "問題68", "問題69", "問題70", "問題71", "問題72", "問題73", "問題74", "問題75", "問題76", "問題77", "問題78", "問題79", "問題80", "問題81"], "12": ["問題18", "問題19", "問題20", "問題21", "問題22", "問題53", "問題54", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題55", "問題56", "問題57", "問題58"], "2": ["問題25", "問題26", "問題27", "問題28", "問題29", "問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24"], "11": ["問題30"], "26": ["問題8", "問題9", "問題14", "問題15", "問題17", "問題18", "問題19"], "10": ["問題28", "問題29", "問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題30", "問題31", "問題32", "問題33", "問題34"], "3": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45"], "25": ["問題3"], "9": ["問題4", "問題1", "問題2", "問題3", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33"], "4": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56", "問題57", "問題58", "問題59", "問題60", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31"], "22": ["問題9", "問題10", "問題11", "問題12", "問題25", "問題26", "問題27", "問題28"], "5": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15"], "6": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8"], "30": ["問題7", "問題8"], "7": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14"], "8": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27"], "34": ["問題29", "問題30", "問題31", "問題32", "問題33", "問題38", "問題39", "問題34", "問題35", "問題36", "問題37", "問題1", "問題2", "問題3", "問題4"], "17": ["問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24"], "40": ["問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45"], "31": ["問題5", "問題6", "問題7", "問題8", "問題1", "問題2", "問題3", "問題4", "問題9", "問題10", "問題11", "問題12"], "28": ["問題67"], "36": ["問題68", "問題67", "問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題82", "問題83", "問題84", "問題76", "問題77", "問題78", "問題79", "問題80", "問題81", "問題85", "問題86", "問題87", "問題88", "問題89", "問題90", "問題91", "問題92", "問題93", "問題94", "問題95", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54", "問題55", "問題56", "問題57", "問題58"], "19": ["問題59", "問題60", "問題61", "問題54", "問題55", "問題56", "問題57", "問題58", "問題62", "問題63", "問題1", "問題2", "問題3", "問題4", "問題5", "問題6", "問題7", "問題8", "問題9", "問題10", "問題11", "問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35"], "33": ["問題12", "問題13", "問題14", "問題15", "問題16", "問題17", "問題18", "問題10", "問題11", "問題19", "問題20", "問題21", "問題22", "問題23", "問題24", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37"], "38": ["問題21", "問題22", "問題23", "問題24", "問題18", "問題19", "問題20", "問題25", "問題26", "問題27", "問題28", "問題29", "問題30", "問題31", "問題32", "問題33", "問題34", "問題35", "問題36", "問題37", "問題38", "問題39", "問題40", "問題41", "問題42", "問題43", "問題44", "問題45", "問題46", "問題47", "問題48", "問題49", "問題50", "問題51", "問題52", "問題53", "問題54"]}, "管理会計論": {"1": ["問題1-1", "問題1-2", "問題1-3", "問題1-4", "問題1-5", "問題1-6", "問題1-7", "問題1-8", "問題1-9", "問題1-10", "問題1-11", "問題1-12", "問題1-13", "問題1-14", "問題1-15", "問題1-16", "問題1-17"], "2": ["問題2-1", "問題2-2", "問題2-3", "問題2-4", "問題2-5", "問題2-6", "問題2-7", "問題2-8", "問題2-9"], "3": ["問題3-1", "問題3-2", "問題3-3", "問題3-4", "問題3-5", "問題3-6", "問題3-7", "問題3-8", "問題3-9", "問題3-10", "例題3-1", "例題3-2", "例題3-4", "例題3-5", "例題3-6"], "4": ["問題4-1", "問題4-2", "問題4-3", "問題4-4", "問題4-5", "問題4-6", "問題4-7", "問題4-8", "問題4-9", "問題4-10", "問題4-11", "問題4-12", "問題4-13", "問題4-14", "問題4-15", "問題4-16", "問題4-17", "問題4-18", "例題4-1", "例題4-2", "例題4-3", "例題4-4", "例題4-5", "例題4-6"], "5": ["問題5-1", "問題5-2", "問題5-3", "問題5-4", "問題5-5", "問題5-6", "問題5-7", "問題5-8", "問題5-9", "問題5-10", "問題5-11", "問題5-12", "問題5-13", "問題5-14", "問題5-15", "問題5-16", "問題5-17", "問題5-18", "例題5-1"], "6": ["問題6-1", "問題6-2", "問題6-3", "問題6-4", "問題6-5", "問題6-6", "問題6-7", "問題6-8", "問題6-9", "問題6-10", "問題6-11", "問題6-12", "問題6-13", "問題6-14", "問題6-15", "問題6-16", "問題6-17", "問題6-18", "問題6-19", "問題6-20", "問題6-21", "例題6-1", "例題6-2", "例題6-3", "例題6-4", "例題6-5", "例題6-6"], "7": ["問題7-1", "問題7-2", "問題7-3", "問題7-4", "問題7-5", "例題7-1", "例題7-2", "例題7-3", "例題7-4", "例題7-5", "例題7-6", "例題7-7"], "8": ["問題8-1", "問題8-2", "問題8-3", "問題8-4", "問題8-5", "問題8-6", "問題8-7", "問題8-8", "問題8-9", "問題8-10", "問題8-11", "問題8-12", "問題8-13", "問題8-14", "問題8-15", "問題8-16", "問題8-17", "問題8-18"], "9": ["問題9-1", "問題9-2", "問題9-3", "問題9-4", "問題9-5", "問題9-6", "問題9-7", "問題9-8", "問題9-9", "例題9-1", "例題9-2", "例題9-3", "例題9-4", "例題9-5", "例題9-6"], "10": ["問題10-1", "問題10-2", "問題10-3", "問題10-4", "問題10-5", "問題10-6", "問題10-7", "問題10-8", "問題10-9", "問題10-10", "例題10-1", "例題10-2", "例題10-3", "例題10-4", "例題10-6", "例題10-7", "例題10-8", "例題10-9", "例題10-10", "例題10-11", "例題10-12"], "11": ["問題11-1", "問題11-2", "問題11-3", "問題11-4", "問題11-5", "問題11-6", "問題11-7", "問題11-8", "例題11-1", "例題11-2", "例題11-3", "例題11-4", "例題11-5", "例題11-6", "例題11-7", "例題11-8", "例題11-9"], "12": ["問題12-1", "問題12-2", "問題12-3", "問題12-4", "問題12-5", "問題12-6", "問題12-7", "問題12-8", "問題12-9", "問題12-10", "問題12-11", "問題12-12", "問題12-13", "問題12-14", "問題12-15", "問題12-16", "問題12-17", "問題12-18", "問題12-19", "問題12-20", "問題12-21", "例題12-1", "例題12-2", "例題12-3"], "13": ["問題13-1", "問題13-2", "問題13-3", "問題13-4", "問題13-5", "問題13-6", "問題13-7", "問題13-8", "問題13-9", "問題13-10", "問題13-11", "例題13-1", "例題13-2", "例題13-3", "例題13-4"], "14": ["問題14-1", "問題14-2", "問題14-3", "問題14-4", "問題14-5", "問題14-6", "問題14-7", "問題14-8", "問題14-9", "問題14-10", "問題14-11", "問題14-12", "問題14-13", "問題14-14", "問題14-15", "例題14-1", "例題14-2", "例題14-3", "例題14-4"], "15": ["問題15-1", "問題15-2", "問題15-3", "問題15-4", "問題15-5", "問題15-6", "例題15-1", "例題15-2", "例題15-3", "例題15-4", "例題15-5", "例題15-6", "例題15-7", "例題15-8", "例題15-9", "例題15-10", "例題15-11", "例題15-12"], "16": ["問題16-1", "問題16-2", "問題16-3", "問題16-4", "問題16-5", "例題16-1", "例題16-2"], "17": ["例題17-1", "例題17-2", "例題17-3", "例題17-4", "例題17-5", "例題17-6"], "19": ["例題19-1", "例題19-2", "例題19-3", "例題19-4", "例題19-5", "例題19-6", "例題19-7", "例題19-8", "例題19-9", "例題19-10", "例題19-11", "例題19-12", "例題19-13", "例題19-14"], "20": ["例題20-1", "例題20-2", "例題20-3", "例題20-4", "例題20-5"], "21": ["例題21-1", "例題21-2", "例題21-3", "例題21-4"], "22": ["例題22-1", "例題22-2", "例題22-3", "例題22-4"], "24": ["例題24-1", "例題24-2", "例題24-3", "例題24-4", "例題24-5", "例題24-6", "例題24-7", "例題24-8", "例題24-9", "例題24-10", "例題24-11", "例題24-12", "例題24-13"], "25": ["例題25-1", "例題25-2", "例題25-3", "例題25-4", "例題25-5", "例題25-6", "例題25-7", "例題25-8", "例題25-9", "例題25-10", "例題25-11", "例題25-12", "例題25-13", "例題25-14", "例題25-15"], "26": ["例題26-1", "例題26-2", "例題26-3", "例題26-4", "例題26-5", "例題26-6", "例題26-7", "例題26-8", "例題26-9", "例題26-10"], "27": ["例題27-1"], "28": ["例題28-1", "例題28-2", "例題28-3", "例題28-4"]}, "財務会計論(計算)": {"1": ["例題1 現金過不足① (短答A/論文C)", "例題2 現金過不足② (短答A/論文C)", "例題3 現金過不足③ (短答A/論文C)", "例題4 当座借越①(期中仕訳) (短答A/論文C)", "例題5 当座借越②(貸借対照表の表示) (短答A/論文C)", "例題6 銀行勘定調整表① (短答A/論文C)", "例題7 銀行勘定調整表② (短答A/論文C)", "例題8 定期預金 (短答A/論文C)", "例題9 小口現金 (短答A/論文C)"], "2": ["例題1 通常の購入・建設仮勘定 (短答B/論文C)", "例題2 買換 (短答B/論文C)", "例題3 一括購入 (短答B/論文C)", "例題4 交換 (短答B/論文C)", "例題5 贈与 (短答B/論文C)", "例題6 現物出資 (短答B/論文C)", "例題7 自家建設 (短答B/論文C)", "例題8 旧定率法 (短答A/論文C)", "例題9 200％定率法① (短答A/論文C)", "例題11 生産高比例法 (短答A/論文C)", "例題12 級数法①(期首取得) (短答B/論文C)", "例題13 級数法②(期中取得) (短答B/論文C)", "例題14 総合償却 (短答A/論文C)", "例題15 直接法から間接法への変更 (短答C/論文C)", "例題16 期中売却 (短答A/論文C)", "例題17 期中除却 (短答A/論文C)", "例題18 火災未決算① (短答B/論文C)", "例題19 火災未決算② (短答B/論文C)", "例題20 火災未決算③ (短答B/論文C)", "例題21 耐用年数の変更 (短答A/論文C)", "例題22 減価償却方法の変更①(定額法から定率法) (短答A/論文C)", "例題23 減価償却方法の変更②(定率法から定額法) (短答A/論文C)", "例題24 資本的支出 (短答A/論文C)", "例題25 国庫補助金受贈益の圧縮記帳(直接減額方式) (短答A/論文C)", "例題26 保険差益の圧縮記帳(直接減額方式) (短答A/論文C)"], "3": ["例題1 吸収合併 (短答B/論文C)", "例題2 長期前払費用 (短答B/論文C)", "例題3 繰延資産① (短答B/論文C)", "例題4 繰延資産② (短答B/論文C)"], "4": ["例題1 修繕引当金 (短答B/論文C)", "例題2 賞与引当金 (短答B/論文C)", "例題3 年俸制 (短答B/論文C)", "例題4 役員賞与引当金 (短答B/論文C)", "例題5 製品保証引当金 (短答B/論文C)", "例題6 債務保証損失引当金 (短答B/論文C)"], "5": ["例題1 売上原価の算定 (短答A/論文C)", "例題2 仕入戻し・仕入値引・仕入割戻・仕入割引 (短答B/論文C)", "例題3 期末帳簿棚卸高の算定 (短答A/論文C)", "例題4 棚卸減耗費の算定 (短答A/論文C)", "例題5 商品の評価① (短答A/論文C)", "例題6 商品の評価② (短答A/論文C)", "例題7 商品の評価の適用基準 (短答A/論文C)", "例題8 他勘定振替 (短答A/論文C)", "例題9 売価還元平均原価法 (短答A/論文C)", "例題10 売価還元低価法(商品評価損を認識する場合) (短答A/論文C)", "例題11 売価還元低価法(商品評価損を認識しない場合) (短答A/論文C)"], "6": ["例題1 未達取引① (短答B/論文C)", "例題2 未達取引② (短答B/論文C)", "例題3 内部取引の相殺・内部利益の消去 (短答B/論文C)", "例題4 商品の評価 (短答B/論文C)", "例題5 支店が複数存在する場合①(支店間取引) (短答B/論文C)", "例題6 支店が複数存在する場合②(支店分散計算制度) (短答B/論文C)", "例題7 支店が複数存在する場合③(本店集中計算制度) (短答B/論文C)"], "7": ["例題1 1株当たり当期純利益 (短答B/論文C)", "例題2 連結上の1株当たり当期純利益 (短答B/論文C)", "例題3 普通株主に帰属しない金額がある場合 (短答B/論文C)", "例題4 期中平均株式数 (短答B/論文C)", "例題5 期中平均自己株式数(個別) (短答B/論文C)", "例題6 期中平均自己株式数(連結) (短答B/論文C)", "例題7 転換社債型新株予約権付社債(転換証券) (短答B/論文C)", "例題8 新株予約権(ワラント) (短答B/論文C)", "例題9 転換株式(転換証券) (短答C/論文C)", "例題10 株式分割 (短答B/論文C)", "例題11 1株当たり純資産額 (短答B/論文C)", "例題12 連結上の1株当たり純資産額 (短答B/論文C)"], "8": ["例題1 経過勘定① (短答A/論文C)", "例題2 経過勘定② (短答A/論文C)", "例題3 経過勘定③ (短答A/論文C)", "例題4 経過勘定④ (短答A/論文C)"], "9": ["例題1 有価証券の取得①(付随費用) (短答A/論文A)", "例題2 有価証券の取得②(約定日基準，修正受渡日基準) (短答A/論文A)", "例題3 有価証券の取得③(贈与) (短答C/論文C)", "例題4 有価証券の売却①(売却原価の算定) (短答A/論文A)", "例題5 有価証券の売却②(売却手数料が生じる場合) (短答B/論文B)", "例題6 有価証券の保有に伴う収益①(受取配当金) (短答A/論文A)", "例題7 有価証券の保有に伴う収益②(有価証券利息) (短答A/論文A)", "例題8 売買目的有価証券① (短答A/論文A)", "例題9 売買目的有価証券② (短答A/論文A)", "例題10 満期保有目的の債券 (短答A/論文A)", "例題11 子会社株式及び関連会社株式 (短答A/論文A)", "例題12 その他有価証券①(全部純資産直入法) (短答A/論文A)", "例題13 その他有価証券②(部分純資産直入法) (短答A/論文A)", "例題15 減損処理 (短答A/論文A)", "例題16 株式分割 (短答B/論文B)", "例題17 株式併合 (短答B/論文B)", "例題18 端数利息①(売却側) (短答A/論文B)", "例題19 端数利息②(購入側) (短答A/論文B)", "例題20 端数利息③(償却原価法) (短答A/論文B)", "例題21 有価証券の保有目的の変更①(売買からその他) (短答B/論文B)", "例題22 有価証券の保有目的の変更②(満期からその他) (短答B/論文B)", "例題23 有価証券の保有目的の変更③(その他から売買) (短答B/論文B)", "例題24 有価証券の保有目的の変更④(その他から子会社) (短答B/論文B)", "例題25 償却原価法(利払日と決算日が異なる場合) (短答A/論文A)"], "10": ["例題1 手形取引① (短答B/論文C)", "例題2 手形取引② (短答B/論文C)", "例題3 手形取引③ (短答B/論文C)", "例題4 手形取引④ (短答B/論文C)", "例題5 手形取引⑤ (短答B/論文C)", "例題6 手形取引⑥ (短答B/論文C)", "例題7 手形取引⑦ (短答B/論文C)", "例題8 不渡手形① (短答B/論文C)", "例題9 不渡手形② (短答B/論文C)", "例題10 不渡手形③ (短答B/論文C)"], "11": ["例題1 電子記録債権 (短答B/論文C)", "例題2 金融資産の譲渡 (短答B/論文B)", "例題3 現先取引 (短答B/論文C)", "例題4 ゴルフ会員権 (短答B/論文C)"], "12": ["例題1 差額補充法 (短答A/論文A)", "例題2 損益計算書の表示① (短答A/論文A)", "例題3 損益計算書の表示② (短答A/論文A)", "例題4 同一企業に対する債権・債務 (短答B/論文C)", "例題5 当期に発生した債権の貸倒 (短答A/論文C)", "例題6 前期以前に発生した債権の貸倒 (短答A/論文C)", "例題7 前期以前に貸倒れた債権の回収 (短答A/論文C)", "例題8 当期に貸倒れた債権の回収 (短答A/論文C)"], "13": ["例題1 商品先物取引①(買建) (短答B/論文B)", "例題2 商品先物取引②(買建) (短答B/論文B)", "例題3 債券先物取引①(売建) (短答B/論文B)", "例題4 債券先物取引②(売建) (短答B/論文B)", "例題5 債券先物取引③(買建) (短答B/論文B)", "例題6 債券先物取引④(買建) (短答B/論文B)", "例題7 通貨オプション取引(コール・オプション) (短答B/論文B)", "例題8 金利スワップ取引 (短答B/論文B)", "例題9 ヘッジ会計①(先物取引) (短答B/論文B)", "例題10 ヘッジ会計②(金利スワップ) (短答B/論文B)"], "14": ["例題1 借手のリース①(基本的会計処理) (短答A/論文A)", "例題2 借手のリース②(基本的会計処理) (短答A/論文A)", "例題3 借手のリース③(割安購入選択権) (短答A/論文A)", "例題4 借手のリース④(残価保証) (短答A/論文A)", "例題5 借手のリース⑤(リース料の半年払い) (短答A/論文A)", "例題6 借手のリース⑥(リース料の前払い) (短答A/論文A)", "例題7 借手のリース⑫(借手の変動リース料) (短答B/論文B)", "例題8 建設協力金 (短答B/論文B)", "例題12 転リース取引 (短答B/論文B)"], "15": ["例題1 研究開発費等① (短答A/論文B)", "例題2 研究開発費等② (短答A/論文B)", "例題3 市場販売目的のソフトウェア① (短答A/論文B)", "例題4 市場販売目的のソフトウェア② (短答A/論文B)", "例題5 市場販売目的のソフトウェア③ (短答A/論文B)", "例題6 市場販売目的のソフトウェア④ (短答A/論文B)", "例題7 自社利用目的のソフトウェア① (短答A/論文B)", "例題8 自社利用目的のソフトウェア② (短答A/論文B)"], "16": ["例題1 減損処理 (短答A/論文A)", "例題2 減損処理のプロセス (短答A/論文A)", "例題3 資産グループにおける減損損失の配分 (短答A/論文A)", "例題4 減損処理後の会計処理 (短答A/論文A)", "例題5 将来キャッシュ・フローの算定方法 (短答B/論文B)", "例題7 共用資産(原則法) (短答A/論文A)", "例題8 共用資産(例外法) (短答A/論文A)", "例題9 のれん(原則法) (短答A/論文B)", "例題10 のれん(例外法) (短答A/論文B)", "例題6 主要な資産以外の構成資産が存在する場合④ (短答B/論文B)"], "17": ["例題1 租税公課 (短答C/論文C)", "例題2 法人税等 (短答A/論文B)", "例題3 棚卸資産の評価損 (短答A/論文B)", "例題4 減価償却 (短答A/論文B)", "例題5 貸倒引当金 (短答A/論文B)", "例題6 退職給付引当金 (短答A/論文B)", "例題7 未払事業税 (短答A/論文B)", "例題8 総合問題 (短答A/論文B)", "例題9 その他有価証券に対する税効果会計① (短答A/論文B)", "例題10 その他有価証券に対する税効果会計② (短答A/論文B)", "例題11 その他有価証券に対する税効果会計③ (短答A/論文B)"], "18": ["例題1 取引発生時の換算 (短答A/論文A)", "例題2 前払金・前受金 (短答A/論文A)", "例題3 決済時の換算 (短答A/論文A)", "例題4 決算時の換算 (短答A/論文A)", "例題5 取引発生以前に為替予約・非資金取引 (短答B/論文B)", "例題6 取引発生以前に為替予約・資金取引 (短答B/論文B)", "例題7 取引発生後に為替予約・非資金取引 (短答B/論文B)", "例題8 取引発生後に為替予約・資金取引 (短答B/論文B)", "例題9 直先差額の長短分類 (短答B/論文B)", "例題10 満期保有目的の債券に対する為替予約 (短答B/論文B)"], "19": ["例題3 満期償還 (短答C/論文C)", "例題4 買入償還①(利払日と償還日が一致している場合) (短答A/論文B)", "例題6 抽選償還①(利息法) (短答A/論文B)", "例題7 抽選償還②(利息法) (短答B/論文C)", "例題8 抽選償還③(定額法) (短答B/論文C)", "例題9 抽選償還④(定額法) (短答B/論文C)", "例題10 繰上償還 (短答B/論文C)", "例題11 社債利息の未計上 (短答C/論文C)"], "20": ["例題1 転換社債型以外の新株予約権付社債 (短答B/論文B)", "例題2 転換社債型新株予約権付社債(区分法) (短答B/論文B)", "例題3 転換社債型新株予約権付社債(一括法) (短答B/論文B)", "例題4 転換社債型新株予約権付社債 (短答B/論文B)"], "21": ["例題1 退職給付債務の算定 (短答B/論文B)", "例題4 年金資産の算定 (短答A/論文A)", "例題5 退職給付費用及び退職給付引当金の算定① (短答A/論文A)", "例題6 退職給付費用及び退職給付引当金の算定② (短答A/論文A)", "例題7 退職一時金制度と企業年金制度の併用 (短答A/論文A)", "例題8 従業員拠出がある企業年金制度 (短答A/論文A)", "例題2 各種差異② (短答A/論文A)", "例題3 各種差異③ (短答A/論文A)", "例題9 前払年金費用 (短答B/論文B)"], "22": ["例題1 資産除去債務 (短答A/論文B)", "例題2 将来キャッシュ・フロー及び割引率① (短答A/論文B)", "例題3 将来キャッシュ・フロー及び割引率② (短答B/論文C)", "例題4 敷金 (短答B/論文C)", "例題5 見積りの変更① (短答A/論文B)", "例題6 見積りの変更② (短答A/論文B)", "例題7 見積りの変更③ (短答A/論文B)", "例題9 資産除去債務が使用の都度発生する場合 (短答B/論文C)"], "23": ["例題1 新株の発行① (短答A/論文A)", "例題2 新株の発行② (短答A/論文A)", "例題3 剰余金の配当① (短答A/論文A)", "例題4 剰余金の配当② (短答A/論文A)", "例題5 剰余金の配当③ (短答A/論文A)", "例題6 剰余金の配当④ (短答B/論文B)", "例題7 剰余金の配当及び処分 (短答A/論文A)", "例題8 自己株式に係る取引 (短答A/論文A)", "例題9 自己株式の処分 (短答A/論文A)", "例題10 自己株式の消却 (短答A/論文A)", "例題11 新株の発行と自己株式の処分を同時に行う場合 (短答A/論文A)", "例題12 新株予約権(発行者側) (短答B/論文B)", "例題13 自己新株予約権① (短答B/論文B)", "例題14 株主資本等変動計算書 (短答A/論文A)", "例題15 新株の発行③ (短答C/論文C)", "例題16 現物出資 (短答A/論文A)", "例題17 無償増資 (短答C/論文C)", "例題18 減資 (短答C/論文C)", "例題19 準備金の取崩 (短答B/論文B)", "例題20 任意積立金の取崩 (短答A/論文A)"], "24": ["例題1 分配可能額①(分配時の剰余金) (短答B/論文C)", "例題2 分配可能額②(自己株式) (短答B/論文C)", "例題3 分配可能額③(評価・換算差額等) (短答B/論文C)", "例題4 分配可能額④(のれん等調整額の減算額) (短答B/論文C)", "例題5 分配可能額⑤(臨時決算) (短答B/論文C)"], "25": ["例題1 基本的会計処理 (短答A/論文B)", "例題2 権利不確定による失効① (短答A/論文B)", "例題3 権利不確定による失効② (短答A/論文B)", "例題4 複数の権利確定条件 (短答B/論文C)", "例題6 ストック・オプション数を変動させる条件変更 (短答B/論文C)", "例題7 費用の合理的な計上期間を変動させる条件変更 (短答A/論文B)", "例題11 段階的に権利行使が可能となる場合 (短答C/論文C)", "例題12 権利確定日後の会計処理 (短答A/論文B)", "例題13 株式の無償交付(事前交付型) (短答B/論文C)", "例題14 株式の無償交付(事後交付型) (短答B/論文C)"], "26": ["例題1 会計方針の変更 (短答B/論文B)", "例題2 耐用年数の変更 (短答B/論文B)", "例題3 引当金の見積りの変更 (短答B/論文B)", "例題4 減価償却方法の変更①(定額法から定率法) (短答B/論文B)", "例題5 減価償却方法の変更②(定率法から定額法) (短答B/論文B)", "例題6 過去の誤謬 (短答B/論文C)"], "27": ["例題1 期中特有の会計処理①(税金費用の計算) (短答B/論文B)", "例題2 期中特有の会計処理②(原価差異の繰延処理) (短答B/論文B)", "例題3 簡便的な会計処理① (短答B/論文B)", "例題4 簡便的な会計処理② (短答B/論文B)"], "28": ["例題1 契約資産と顧客との契約から生じた債権 (短答B/論文B)", "例題2 契約負債 (短答B/論文B)", "例題3 財又はサービスに対する保証 (短答A/論文B)", "例題4 カスタマー・ロイヤルティー・プログラム (短答A/論文B)", "例題5 代理人に該当する場合① (短答B/論文B)", "例題6 代理人に該当する場合②(消化仕入) (短答B/論文B)", "例題7 変動対価①(リベート) (短答A/論文B)", "例題8 変動対価②(返品権付き販売) (短答A/論文B)", "例題9 契約における重要な金融要素 (短答B/論文B)", "例題10 顧客に支払われる対価 (短答B/論文B)", "例題11 消費税額 (短答B/論文B)", "例題12 他社ポイントの付与 (短答B/論文B)", "例題13 値引きの配分① (短答A/論文B)", "例題14 値引きの配分② (短答A/論文B)", "例題15 値引きの配分③ (短答A/論文B)", "例題16 取引価格の事後的な変動 (短答A/論文B)"], "29": ["例題1 株式の取得が1回の場合の資本連結① (短答A/論文A)", "例題2 株式の取得が1回の場合の資本連結② (短答A/論文A)", "例題3 のれん①(支配獲得時) (短答A/論文A)", "例題4 のれん②(支配を獲得した翌期) (短答A/論文A)", "例題5 のれん③(支配を獲得した翌々期) (短答A/論文A)", "例題6 評価差額の計上 (短答A/論文A)", "例題7 非支配株主持分① (短答A/論文A)", "例題8 非支配株主持分② (短答A/論文A)", "例題9 非支配株主持分③ (短答A/論文A)", "例題10 子会社の配当 (短答A/論文A)", "例題11 棚卸資産の評価差額の実現 (短答C/論文C)", "例題12 評価差額の実現と持分変動 (短答B/論文B)", "例題13 取得関連費用①(一括取得) (短答A/論文A)", "例題14 取得関連費用②(段階取得) (短答A/論文A)", "例題15 取得関連費用③(追加取得) (短答A/論文A)", "例題16 取得関連費用④(一部売却) (短答A/論文A)", "例題17 子会社が他の会社を支配している場合(間接所有) (短答B/論文B)", "例題20 のれん償却及び受取配当金 (短答B/論文B)", "例題18 複数の未達取引 (短答B/論文B)", "例題19 税率変更②(償却性資産に係る未実現利益) (短答A/論文A)", "例題1 資本剰余金の残高が負の値となった場合 (短答C/論文C)", "例題2 株主割当増資 (短答B/論文B)", "例題5 第三者割当増資③(一部引き受けの場合) (短答B/論文B)", "例題6 子会社が保有する自己株式① (短答C/論文B)", "例題7 子会社が保有する自己株式② (短答C/論文B)", "例題8 子会社が保有する自己株式③ (短答C/論文B)", "例題9 子会社が保有する親会社株式 (短答C/論文C)", "例題10 持分法適用会社が保有する投資会社株式 (短答C/論文C)", "例題11 子会社が第三者に新株予約権を発行している場合 (短答C/論文C)", "例題12 子会社が親会社に新株予約権を発行している場合 (短答C/論文C)", "例題13 権利落ち株式①(原始取得) (短答C/論文C)", "例題14 権利落ち株式②(追加取得) (短答C/論文C)", "例題15 権利落ち株式③(一部売却) (短答C/論文C)", "例題16 連結から持分法への移行 (短答B/論文B)", "例題17 連結除外 (短答B/論文B)", "例題18 持分法の適用除外 (短答B/論文B)", "例題20 子会社に欠損が生じた場合 (短答C/論文B)", "例題21 関連会社に欠損が生じた場合 (短答C/論文B)", "例題22 のれんの一時償却 (短答C/論文B)", "例題23 識別可能な無形資産 (短答B/論文A)", "例題24 条件付取得対価 (短答B/論文A)", "例題3 社債①(発行時取得) (短答C/論文C)", "例題4 社債②(発行後取得) (短答C/論文C)"], "30": ["例題1 基本的会計処理 (短答A/論文A)", "例題2 剰余金の配当 (短答A/論文A)", "例題3 資産及び負債の時価評価・取得関連費用 (短答A/論文A)", "例題4 税効果会計(資産及び負債の時価評価) (短答A/論文A)", "例題5 段階取得 (短答A/論文A)", "例題6 追加取得 (短答A/論文A)", "例題7 持分法から連結会計への移行 (短答A/論文A)", "例題8 一部売却 (短答A/論文A)", "例題9 その他有価証券評価差額金① (短答B/論文A)", "例題10 その他有価証券評価差額金②(追加取得) (短答B/論文A)", "例題11 その他有価証券評価差額金③(一部売却) (短答B/論文A)", "例題12 棚卸資産に係る未実現利益①(ダウンストリーム) (短答B/論文B)", "例題13 棚卸資産に係る未実現利益②(アップストリーム) (短答B/論文B)", "例題18 総合問題 (短答B/論文B)", "例題19 税効果会計①(未実現損益・ダウンストリーム) (短答B/論文B)", "例題20 税効果会計②(未実現損益・アップストリーム) (短答B/論文B)"], "31": ["例題1 包括利益の算定① (短答A/論文A)", "例題2 包括利益の算定②(子会社がある場合) (短答A/論文A)", "例題3 包括利益の算定③(持分法適用会社がある場合) (短答A/論文A)", "例題4 組替調整①(その他有価証券の売却・税効果なし) (短答A/論文A)", "例題5 組替調整②(その他有価証券の売却・税効果あり) (短答A/論文A)", "例題6 組替調整③(その他有価証券の減損処理) (短答A/論文A)", "例題7 持分法から連結への移行 (短答C/論文B)", "例題8 一部売却①(子会社がある場合) (短答B/論文A)", "例題9 一部売却②(持分法適用会社がある場合) (短答B/論文A)", "例題10 連結から持分法への移行 (短答C/論文C)", "例題11 連結除外 (短答C/論文C)"], "32": ["例題6 支配獲得時に子会社に未認識の差異がある場合 (短答C/論文B)"], "33": ["例題1 在外支店の換算① (短答B/論文B)", "例題2 在外支店の換算② (短答B/論文C)", "例題3 在外支店の換算③ (短答B/論文C)"], "34": ["例題1 在外子会社の個別財務諸表の換算 (短答A/論文A)", "例題2 資本連結①(原始取得) (短答A/論文A)", "例題3 資本連結②(剰余金の配当) (短答A/論文A)", "例題4 資本連結③(追加取得) (短答A/論文A)", "例題5 資本連結④(一部売却) (短答A/論文A)", "例題6 未実現損益①(ダウンストリーム) (短答A/論文A)", "例題7 未実現損益②(ダウンストリーム) (短答A/論文A)", "例題8 未実現損益③(アップストリーム) (短答C/論文C)", "例題9 在外関連会社 (短答C/論文C)"], "35": ["例題1 報告セグメントの決定 (短答B/論文C)", "例題2 セグメント情報の開示 (短答C/論文C)", "例題3 差異調整 (短答C/論文C)"], "36": ["例題1 資金(キャッシュ)の範囲 (短答A/論文B)", "例題2 当座借越 (短答A/論文B)", "例題3 営業収入①(売上債権) (短答B/論文B)", "例題4 営業収入②(前受金) (短答B/論文B)", "例題5 営業収入③(貸倒) (短答B/論文B)", "例題6 営業収入④(総合問題) (短答B/論文B)", "例題7 営業収入⑤(為替差益) (短答B/論文B)", "例題8 営業収入⑥(為替差損) (短答B/論文B)", "例題9 営業収入⑦(手形の割引) (短答B/論文B)", "例題10 営業収入⑧(手形の裏書) (短答B/論文B)", "例題11 営業収入⑨(為替手形の振出) (短答B/論文B)", "例題12 営業収入⑩(償却債権取立益) (短答B/論文B)", "例題13 仕入支出①(仕入債務) (短答B/論文B)", "例題14 仕入支出②(前払金) (短答B/論文B)", "例題15 仕入支出③(総合問題) (短答B/論文B)", "例題16 仕入支出④(為替差損) (短答B/論文B)", "例題17 仕入支出⑤(為替差益) (短答B/論文B)", "例題18 仕入支出⑥(仕入割引) (短答B/論文B)", "例題19 仕入支出⑦(手形の裏書) (短答B/論文B)", "例題20 仕入支出⑧(為替手形の振出) (短答B/論文B)", "例題21 仕入支出⑨(棚卸減耗費・商品評価損) (短答B/論文B)", "例題22 人件費の支出① (短答B/論文B)", "例題23 人件費の支出② (短答B/論文B)", "例題24 その他の営業支出①(経過勘定) (短答B/論文B)", "例題25 その他の営業支出②(経過勘定) (短答B/論文B)", "例題26 利息及び配当金の受取額 (短答A/論文B)", "例題27 利息の支払額 (短答A/論文B)", "例題28 法人税等の支払額 (短答B/論文B)"], "37": ["例題1 直接法・原則法①(営業収入と仕入支出の相殺) (短答C/論文B)", "例題2 直接法・原則法②(利息の受取額と支払額の相殺) (短答C/論文B)", "例題7 直接法・原則法⑦(子会社の増資の相殺及び振替) (短答C/論文B)", "例題8 直接法・原則法⑧(子会社株式の追加取得) (短答C/論文B)", "例題9 直接法・原則法⑨(子会社株式の一部売却) (短答C/論文B)", "例題10 間接法・簡便法① (短答C/論文B)", "例題12 間接法・原則法②(貸倒引当金の増減額の調整) (短答C/論文A)", "例題14 間接法・原則法④(子会社の配当) (短答C/論文A)", "例題17 間接法・原則法⑦(連結損益計算書固有の項目) (短答C/論文A)", "例題18 持分法適用会社 (短答C/論文A)", "例題4 直接法・原則法⑬(新規連結) (短答C/論文B)", "例題5 直接法・原則法⑭(連結除外) (短答C/論文B)", "例題6 間接法・簡便法②(新規連結) (短答C/論文B)"], "38": ["例題1 直接法・原則法① (短答C/論文B)", "例題2 間接法・簡便法 (短答C/論文B)", "例題3 間接法・原則法① (短答C/論文B)"], "39": ["例題1 取得：合併①(新株の発行) (短答A/論文A)", "例題2 取得：合併②(自己株式の処分) (短答A/論文A)", "例題3 取得：合併③(取得原価の配分) (短答A/論文A)", "例題4 取得：合併④(取得原価の配分) (短答A/論文A)", "例題5 取得：合併⑤(取得原価の配分) (短答B/論文A)", "例題6 取得：合併⑥(暫定的な会計処理) (短答B/論文B)", "例題8 取得：合併⑧(被取得企業の自己株式) (短答B/論文A)", "例題9 取得：合併⑨(段階取得・その他有価証券) (短答A/論文A)", "例題10 取得：合併⑩(段階取得・関連会社株式) (短答C/論文B)", "例題13 合併比率の算定①(株式市価法) (短答C/論文C)", "例題14 合併比率の算定②(簿価純資産額法) (短答C/論文C)", "例題15 合併比率の算定③(時価純資産額法) (短答C/論文C)", "例題16 合併比率の算定④(収益還元価値法) (短答C/論文C)", "例題17 取得：株式交換①(新株の発行) (短答A/論文A)", "例題18 取得：株式交換②(自己株式の処分) (短答A/論文A)", "例題19 取得：株式交換③(取得関連費用) (短答A/論文A)", "例題20 取得：株式交換④(段階取得) (短答A/論文A)", "例題21 取得：株式移転 (短答B/論文B)", "例題22 共通支配下の取引等：親会社と子会社の合併① (短答A/論文A)", "例題23 共通支配下の取引等：親会社と子会社の合併② (短答A/論文A)", "例題26 共同支配企業の形成：新設分割 (短答B/論文B)", "例題27 逆取得：吸収合併 (短答A/論文A)"], "40": ["例題5 対価が分離先企業の株式のみの場合(新規子会社) (短答A/論文A)"]}}
+</script>
 
 <script>
 const STORAGE_KEY = 'studyLedgerData_v2';
@@ -348,6 +340,7 @@ function loadData(){
     subjects: Array.from(subjSet),
     todos: [],
     timeLogs: {},
+    dailyLogs: {},
     runningTimer: null,
     materials: seed.materials,
     topics: seed.topics,
@@ -364,6 +357,7 @@ function save(){
 
 // ---------- Migration: merge any new seed topics/materials not yet present ----------
 (function migrateSeed(){
+  if(!data.dailyLogs) data.dailyLogs = {};
   const seed = JSON.parse(document.getElementById('seed-data').textContent);
   let changed = false;
   const existingKeys = new Set(data.topics.map(t=>t.subject+'||'+t.name));
@@ -389,6 +383,22 @@ function save(){
     }
   });
   if(changed) save();
+
+  // migrate any legacy questions (pre-drilldown) to link topicId + tri-state ratings
+  let qChanged = false;
+  data.questions.forEach(q=>{
+    if(q.topicId===undefined || q.topicId===null){
+      const match = data.topics.find(t=>t.subject===q.subject && t.name===q.chapter);
+      if(match){ q.topicId = match.id; qChanged = true; }
+    }
+    q.attempts.forEach(a=>{
+      if(a.rating===undefined && a.correct!==undefined){
+        a.rating = a.correct ? 'o' : 'x';
+        qChanged = true;
+      }
+    });
+  });
+  if(qChanged) save();
 })();
 
 // ---------- Tabs ----------
@@ -402,7 +412,6 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
     if(v==='time') renderTime();
     if(v==='topics') renderTopics();
     if(v==='materials') renderMaterials();
-    if(v==='questions') renderQuestions();
     if(v==='scores'){ renderScores(); renderWeak(); }
     if(v==='plan') renderPlan();
     if(v==='sync') renderSync();
@@ -443,16 +452,17 @@ document.getElementById('manageSubjectsBtn').addEventListener('click', ()=>{
   if(next!==null){
     data.subjects = next.split(',').map(s=>s.trim()).filter(Boolean);
     save();
-    [document.getElementById('todoSubject'), document.getElementById('qSubject'), document.getElementById('scoreSubject')].forEach(fillSubjectSelect);
+    [document.getElementById('todoSubject'), document.getElementById('scoreSubject')].forEach(fillSubjectSelect);
     renderTime();
   }
 });
 
-// ---------- Ebbinghaus core ----------
-function applyStudyResult(entity, correct){
-  // correct: true -> advance stage (longer interval), false -> reset to stage 0 (review soon)
-  if(correct === false){
+// ---------- Ebbinghaus core (tri-state: 'o'=よく理解, 'd'=△まあまあ, 'x'=理解不足) ----------
+function applyGrade(entity, grade){
+  if(grade==='x'){
     entity.stage = 0;
+  } else if(grade==='d'){
+    entity.stage = Math.max(1, entity.stage||0); // keep same spacing, don't extend
   } else {
     entity.stage = Math.min((entity.stage||0)+1, EBBINGHAUS_DAYS.length);
   }
@@ -462,6 +472,7 @@ function applyStudyResult(entity, correct){
   const interval = EBBINGHAUS_DAYS[Math.max(0, idx)];
   entity.nextReview = addDays(today, interval);
 }
+function applyStudyResult(entity, correct){ applyGrade(entity, correct ? 'o' : 'x'); }
 
 // ---------- HOME ----------
 function renderHome(){
@@ -477,15 +488,15 @@ function renderHome(){
       html += `<div class="due-item">
         <div class="due-main">
           <div class="due-title">${escapeHtml(q.subject)} ${escapeHtml(q.chapter)}</div>
-          <div class="due-sub">${escapeHtml(q.memo||'問題演習')} の復習</div>
+          <div class="due-sub">${escapeHtml(q.memo||'設問')} の復習</div>
         </div>
-        <button class="pill ok" data-qcorrect="${q.id}">〇</button>
-        <button class="pill ng" data-qwrong="${q.id}">✕</button>
+        <button class="pill ok" data-qg="o" data-qid="${q.id}">〇</button>
+        <button class="pill tri" data-qg="d" data-qid="${q.id}">△</button>
+        <button class="pill ng" data-qg="x" data-qid="${q.id}">✕</button>
       </div>`;
     });
     card.innerHTML = html;
-    card.querySelectorAll('[data-qcorrect]').forEach(el=>el.addEventListener('click', ()=>logQuestionResult(Number(el.dataset.qcorrect), true, renderHome)));
-    card.querySelectorAll('[data-qwrong]').forEach(el=>el.addEventListener('click', ()=>logQuestionResult(Number(el.dataset.qwrong), false, renderHome)));
+    card.querySelectorAll('[data-qg]').forEach(el=>el.addEventListener('click', ()=>logQuestionResult(Number(el.dataset.qid), el.dataset.qg, renderHome)));
   }
   renderTodos();
   renderSeals();
@@ -583,6 +594,18 @@ function renderTodos(){
 
 // ---------- TIME ----------
 let tickInterval = null;
+const SUBJECT_COLORS = ['#B8935F','#3F6B4F','#1B2A4A','#A6453D','#6b8caf','#8f6f9e','#c9a86a','#527a6b'];
+function subjectColor(subject){
+  const idx = data.subjects.indexOf(subject);
+  return SUBJECT_COLORS[(idx<0?0:idx) % SUBJECT_COLORS.length];
+}
+function addTimeLog(subject, minutes){
+  if(minutes<=0) return;
+  data.timeLogs[subject] = (data.timeLogs[subject]||0) + minutes;
+  const day = todayStr();
+  data.dailyLogs[day] = data.dailyLogs[day] || {};
+  data.dailyLogs[day][subject] = (data.dailyLogs[day][subject]||0) + minutes;
+}
 function renderTime(){
   const card = document.getElementById('timerCard');
   card.innerHTML = data.subjects.map(s=>{
@@ -596,6 +619,8 @@ function renderTime(){
   }).join('');
   card.querySelectorAll('.timer-btn').forEach(btn=>btn.addEventListener('click', ()=>toggleTimer(btn.dataset.subj)));
   renderChart();
+  renderTimeStats();
+  renderDailyChart();
   if(data.runningTimer){
     if(tickInterval) clearInterval(tickInterval);
     tickInterval = setInterval(()=>{
@@ -607,11 +632,11 @@ function renderTime(){
 function liveElapsed(){ if(!data.runningTimer) return 0; return (Date.now()-data.runningTimer.startedAt)/60000; }
 function toggleTimer(subject){
   if(data.runningTimer && data.runningTimer.subject===subject){
-    data.timeLogs[subject] = (data.timeLogs[subject]||0) + liveElapsed();
+    addTimeLog(subject, liveElapsed());
     data.runningTimer = null;
   } else {
     if(data.runningTimer){
-      data.timeLogs[data.runningTimer.subject] = (data.timeLogs[data.runningTimer.subject]||0) + liveElapsed();
+      addTimeLog(data.runningTimer.subject, liveElapsed());
     }
     data.runningTimer = {subject, startedAt: Date.now()};
   }
@@ -625,10 +650,64 @@ function renderChart(){
     const v = data.timeLogs[s]||0;
     const pct = Math.max(2, (v/max)*100);
     return `<div class="chart-bar-row"><div class="chart-label">${escapeHtml(s)}</div>
-      <div class="chart-track"><div class="chart-fill" style="width:${pct}%"></div></div>
+      <div class="chart-track"><div class="chart-fill" style="width:${pct}%; background:${subjectColor(s)};"></div></div>
       <div class="chart-val">${fmtMinutes(v)}</div></div>`;
   }).join('');
 }
+
+function dateNDaysAgo(n){ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
+function sumDailyRange(days){
+  let sum = 0;
+  for(let i=0;i<days;i++){
+    const day = dateNDaysAgo(i);
+    const entry = data.dailyLogs[day];
+    if(entry) sum += Object.values(entry).reduce((a,b)=>a+b,0);
+  }
+  return sum;
+}
+function renderTimeStats(){
+  const grid = document.getElementById('timeStatGrid');
+  const runningExtra = data.runningTimer ? liveElapsed() : 0;
+  const today = sumDailyRange(1) + runningExtra;
+  const week = sumDailyRange(7) + runningExtra;
+  const month = sumDailyRange(30) + runningExtra;
+  const total = Object.values(data.timeLogs).reduce((a,b)=>a+b,0) + runningExtra;
+  grid.innerHTML = `
+    <div class="stat-box"><div class="stat-num">${fmtMinutes(today)}</div><div class="stat-lbl">今日</div></div>
+    <div class="stat-box"><div class="stat-num">${fmtMinutes(week)}</div><div class="stat-lbl">直近7日間</div></div>
+    <div class="stat-box"><div class="stat-num">${fmtMinutes(month)}</div><div class="stat-lbl">直近30日間</div></div>
+    <div class="stat-box"><div class="stat-num">${fmtMinutes(total)}</div><div class="stat-lbl">総勉強時間</div></div>
+  `;
+}
+function renderDailyChart(){
+  const card = document.getElementById('dailyChartCard');
+  const days = [];
+  for(let i=13;i>=0;i--){ days.push(dateNDaysAgo(i)); }
+  const runningExtra = data.runningTimer ? liveElapsed() : 0;
+  const dayTotals = days.map(d=>{
+    const entry = {...(data.dailyLogs[d]||{})};
+    if(d===todayStr() && data.runningTimer){ entry[data.runningTimer.subject] = (entry[data.runningTimer.subject]||0) + runningExtra; }
+    return {date:d, entry, total:Object.values(entry).reduce((a,b)=>a+b,0)};
+  });
+  const maxTotal = Math.max(60, ...dayTotals.map(d=>d.total));
+  const bars = dayTotals.map(d=>{
+    const md = d.date.slice(5).replace('-','/');
+    const segs = data.subjects.map(s=>{
+      const v = d.entry[s]||0;
+      if(v<=0) return '';
+      const h = Math.max(2, (v/maxTotal)*100);
+      return `<div style="height:${h}%; background:${subjectColor(s)};" title="${escapeHtml(s)}: ${fmtMinutes(v)}"></div>`;
+    }).join('');
+    return `<div style="display:flex; flex-direction:column; align-items:center; flex:1; min-width:0;">
+      <div style="display:flex; flex-direction:column-reverse; width:100%; height:120px; background:var(--paper-dim); border-radius:3px 3px 0 0; overflow:hidden;">${segs}</div>
+      <div style="font-size:8.5px; color:#9a9382; margin-top:3px; writing-mode:vertical-rl; text-orientation:mixed; height:30px;">${md}</div>
+    </div>`;
+  }).join('');
+  const legend = data.subjects.map(s=>`<span style="display:inline-flex; align-items:center; gap:3px; font-size:10px; color:#7a7361; margin-right:8px;"><span style="width:8px; height:8px; border-radius:2px; background:${subjectColor(s)}; display:inline-block;"></span>${escapeHtml(s)}</span>`).join('');
+  card.innerHTML = `<div style="display:flex; gap:4px; align-items:flex-end;">${bars}</div>
+    <div style="margin-top:10px; line-height:1.8;">${legend}</div>`;
+}
+
 
 // ---------- TOPICS ----------
 function renderTopics(){
@@ -667,26 +746,38 @@ function renderTopics(){
   }));
 }
 
-// ---------- MATERIALS (whole-book page progress) ----------
-fillSubjectSelect(document.getElementById('matSubject'));
-document.getElementById('addMaterialBtn').addEventListener('click', ()=>{
-  const name = document.getElementById('matName').value.trim();
-  const subject = document.getElementById('matSubject').value;
-  const total = Number(document.getElementById('matTotal').value);
-  if(!name || !total) return;
-  const maxId = data.materials.reduce((m,x)=>Math.max(m,x.id),0);
-  data.materials.push({id:maxId+1, subject, name, total, done:0, importance:'B'});
-  document.getElementById('matName').value=''; document.getElementById('matTotal').value='';
-  save(); renderMaterials();
-});
-function renderMaterials(){
-  const container = document.getElementById('materialsBySubject');
-  if(data.materials.length===0){ container.innerHTML='<div class="empty">教材が登録されていません</div>'; return; }
+// ---------- MATERIALS (drill-down: 教材(書籍) → 章 → 設問) ----------
+let matView = { level: 'materials' };
+
+function renderMaterialsRoot(){
+  const root = document.getElementById('materialsRoot');
+  if(matView.level === 'chapters') root.innerHTML = materialsChaptersHTML();
+  else if(matView.level === 'questions') root.innerHTML = materialsQuestionsHTML();
+  else if(matView.level === 'question') root.innerHTML = materialsQuestionDetailHTML();
+  else root.innerHTML = materialsListHTML();
+  wireMaterialsRoot();
+}
+// backward-compat alias used elsewhere in the app
+function renderMaterials(){ renderMaterialsRoot(); }
+
+function materialsListHTML(){
+  let html = `<h2 class="section-title">教材(書籍)</h2>
+  <p style="font-size:11.5px; color:#7a7361; margin-top:-4px;">読んだページを記録できます。章ごとの学習・設問演習に進みたい教材は「章・設問を見る」から進んでください。</p>
+  <div class="card">
+    <div class="field-label" style="margin-top:0;">教材名</div>
+    <input type="text" id="matName" placeholder="例: 財務会計論(計算) テキスト11">
+    <div class="row" style="margin-top:8px; gap:8px;">
+      <select id="matSubject" style="flex:1;"></select>
+      <input type="number" id="matTotal" placeholder="総ページ数" style="flex:1;">
+    </div>
+    <button class="primary" id="addMaterialBtn" style="width:100%; margin-top:10px;">教材を追加</button>
+  </div>`;
+  if(data.materials.length===0){ html += '<div class="card"><div class="empty">教材が登録されていません</div></div>'; return html; }
   const bySubject = {};
   data.materials.forEach(m=>{ (bySubject[m.subject]=bySubject[m.subject]||[]).push(m); });
-  let html = '';
   Object.keys(bySubject).forEach(subj=>{
     html += `<h3 class="subject-head">${escapeHtml(subj)}</h3><div class="card">`;
+    const hasChapters = data.topics.some(t=>t.subject===subj);
     bySubject[subj].forEach(m=>{
       const pct = Math.min(100, Math.round((m.done/m.total)*100));
       html += `<div class="mat-item">
@@ -697,84 +788,211 @@ function renderMaterials(){
           <span>${m.done} / ${m.total}p (${pct}%)</span>
           <span><button class="icon-btn" data-matminus="${m.id}">−</button><button class="icon-btn" data-matplus="${m.id}">＋</button></span>
         </div>
+        ${hasChapters ? `<button class="pill study" style="margin-top:8px;" data-gotochapters="${escapeHtml(subj)}">章・設問を見る ▸</button>` : ''}
       </div>`;
     });
     html += '</div>';
   });
-  container.innerHTML = html;
-  container.querySelectorAll('[data-matplus]').forEach(el=>el.addEventListener('click', ()=>{
-    const m = data.materials.find(x=>x.id===Number(el.dataset.matplus));
-    m.done = Math.min(m.total, m.done + Math.max(1, Math.round(m.total*0.02)));
-    save(); renderMaterials();
-  }));
-  container.querySelectorAll('[data-matminus]').forEach(el=>el.addEventListener('click', ()=>{
-    const m = data.materials.find(x=>x.id===Number(el.dataset.matminus));
-    m.done = Math.max(0, m.done - Math.max(1, Math.round(m.total*0.02)));
-    save(); renderMaterials();
-  }));
-  container.querySelectorAll('[data-delmat]').forEach(el=>el.addEventListener('click', ()=>{
-    data.materials = data.materials.filter(x=>x.id!==Number(el.dataset.delmat));
-    save(); renderMaterials();
-  }));
+  return html;
 }
 
-// ---------- QUESTIONS ----------
-fillSubjectSelect(document.getElementById('qSubject'));
-document.getElementById('addQuestionBtn').addEventListener('click', ()=>{
-  const subject = document.getElementById('qSubject').value;
-  const chapter = document.getElementById('qChapter').value.trim();
-  const memo = document.getElementById('qMemo').value.trim();
-  if(!chapter) return;
-  data.questions.unshift({id:Date.now(), subject, chapter, memo, attempts:[], stage:0, lastStudied:null, nextReview:null});
-  document.getElementById('qChapter').value=''; document.getElementById('qMemo').value='';
-  save(); renderQuestions();
-});
-function logQuestionResult(id, correct, cb){
+function materialsChaptersHTML(){
+  const subj = matView.subject;
+  const topics = data.topics.filter(t=>t.subject===subj);
+  let html = `<button class="back-link" id="backToMaterials">← 教材一覧に戻る</button>
+  <h2 class="section-title">${escapeHtml(subj)} の章</h2>
+  <p style="font-size:11.5px; color:#7a7361; margin-top:-4px;">章をタップすると、その章の設問一覧・演習記録に進めます。</p>
+  <div class="card">`;
+  if(topics.length===0){ html += '<div class="empty">この科目の章データがありません</div>'; }
+  topics.forEach(t=>{
+    const qCount = data.questions.filter(q=>q.topicId===t.id).length;
+    const reviewNote = t.nextReview ? `次回復習 ${t.nextReview}` : '未着手';
+    html += `<div class="drill-row" data-gotoquestions="${t.id}">
+      <div class="drill-main">
+        <div class="drill-title">${escapeHtml(t.name)} <span class="imp-badge imp-${t.importance}">${t.importance}</span></div>
+        <div class="drill-sub">${t.cycles||0}周 ・ ${reviewNote} ・ 設問${qCount}件</div>
+      </div>
+      <div class="drill-arrow">▸</div>
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+let _labelBankCache = null;
+function getLabelBank(){
+  if(_labelBankCache) return _labelBankCache;
+  try{ _labelBankCache = JSON.parse(document.getElementById('question-label-bank').textContent); }
+  catch(e){ _labelBankCache = {}; }
+  return _labelBankCache;
+}
+function getImportableLabels(topic){
+  const m = topic.name.match(/^第(\d+)章/);
+  if(!m) return [];
+  const bank = getLabelBank();
+  const chapMap = bank[topic.subject];
+  if(!chapMap) return [];
+  const labels = chapMap[String(Number(m[1]))] || chapMap[Number(m[1])] || [];
+  const existing = new Set(data.questions.filter(q=>q.topicId===topic.id).map(q=>q.memo));
+  return labels.filter(l=>!existing.has(l));
+}
+
+function materialsQuestionsHTML(){
+  const t = data.topics.find(x=>x.id===matView.topicId);
+  if(!t){ matView = {level:'materials'}; return materialsListHTML(); }
+  const questions = data.questions.filter(q=>q.topicId===t.id);
+  const importable = getImportableLabels(t);
+  let html = `<button class="back-link" id="backToChapters">← ${escapeHtml(t.subject)} の章一覧に戻る</button>
+  <h2 class="section-title">${escapeHtml(t.name)}</h2>`;
+  if(importable.length>0){
+    html += `<div class="card">
+      <div class="field-label" style="margin-top:0;">教材から設問を読み込む</div>
+      <p style="font-size:11px; color:#7a7361; margin:0 0 8px;">アップロードされたPDFから、この章の設問番号(${importable.length}件)を自動で読み込めます。</p>
+      <button class="primary" id="importQuestionsBtn" style="width:100%;">教材から${importable.length}件を読み込む</button>
+    </div>`;
+  }
+  html += `<div class="card">
+    <div class="field-label" style="margin-top:0;">設問を追加(例: 例題1-1)</div>
+    <input type="text" id="qMemo" placeholder="例: 例題1-1">
+    <button class="primary" id="addQuestionBtn" style="width:100%; margin-top:8px;">追加</button>
+  </div>
+  <div class="card">`;
+  if(questions.length===0){ html += '<div class="empty">まだ設問が登録されていません</div>'; }
+  questions.forEach(q=>{
+    const total = q.attempts.length;
+    const lastRating = total ? q.attempts[total-1].rating : null;
+    const lastBadge = lastRating ? `<span class="imp-badge imp-${ {o:'A',d:'B',x:'C'}[lastRating] }">${ {o:'〇',d:'△',x:'✕'}[lastRating] }</span>` : '';
+    const sub = total ? `${total}回演習${q.nextReview?` ・ 次回復習 ${q.nextReview}`:''}` : 'まだ演習記録なし';
+    html += `<div class="drill-row" data-openq="${q.id}">
+      <div class="drill-main">
+        <div class="drill-title">${escapeHtml(q.memo||'(無題の設問)')}</div>
+        <div class="drill-sub">${sub}</div>
+      </div>
+      ${lastBadge}<div class="drill-arrow">▸</div>
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function materialsQuestionDetailHTML(){
+  const q = data.questions.find(x=>x.id===matView.questionId);
+  if(!q){ matView = {level:'materials'}; return materialsListHTML(); }
+  const total = q.attempts.length;
+  const hist = q.attempts.slice(-12).map(a=>{
+    const cls = a.rating==='o' ? 'c' : (a.rating==='d' ? 'd' : 'x');
+    return `<div class="hist-dot ${cls}"></div>`;
+  }).join('');
+  const lastNote = total ? `直近: ${ {o:'〇 理解',d:'△ まあまあ',x:'✕ 不足'}[q.attempts[total-1].rating] } (${q.attempts[total-1].date})` : 'まだ演習記録なし';
+  return `<button class="back-link" id="backToQuestions">← ${escapeHtml(q.chapter)} の設問一覧に戻る</button>
+  <h2 class="section-title">${escapeHtml(q.memo||'(無題の設問)')}</h2>
+  <div class="card">
+    <div class="q-stats">${lastNote}${q.nextReview?` ・ 次回復習 ${q.nextReview}`:''}</div>
+    <div class="q-history" style="margin:8px 0;">${hist}</div>
+    <div class="q-actions">
+      <button class="pill ok" data-qg="o" data-qid="${q.id}">〇 理解</button>
+      <button class="pill tri" data-qg="d" data-qid="${q.id}">△ まあまあ</button>
+      <button class="pill ng" data-qg="x" data-qid="${q.id}">✕ 不足</button>
+    </div>
+  </div>
+  <div class="card">
+    <button class="ghost" data-delq="${q.id}" style="width:100%;">この設問を削除</button>
+  </div>`;
+}
+
+function wireMaterialsRoot(){
+  const root = document.getElementById('materialsRoot');
+  if(matView.level==='materials'){
+    fillSubjectSelect(document.getElementById('matSubject'));
+    document.getElementById('addMaterialBtn').addEventListener('click', ()=>{
+      const name = document.getElementById('matName').value.trim();
+      const subject = document.getElementById('matSubject').value;
+      const total = Number(document.getElementById('matTotal').value);
+      if(!name || !total) return;
+      const maxId = data.materials.reduce((m,x)=>Math.max(m,x.id),0);
+      data.materials.push({id:maxId+1, subject, name, total, done:0, importance:'B'});
+      save(); renderMaterialsRoot();
+    });
+    root.querySelectorAll('[data-matplus]').forEach(el=>el.addEventListener('click', ()=>{
+      const m = data.materials.find(x=>x.id===Number(el.dataset.matplus));
+      m.done = Math.min(m.total, m.done + Math.max(1, Math.round(m.total*0.02)));
+      save(); renderMaterialsRoot();
+    }));
+    root.querySelectorAll('[data-matminus]').forEach(el=>el.addEventListener('click', ()=>{
+      const m = data.materials.find(x=>x.id===Number(el.dataset.matminus));
+      m.done = Math.max(0, m.done - Math.max(1, Math.round(m.total*0.02)));
+      save(); renderMaterialsRoot();
+    }));
+    root.querySelectorAll('[data-delmat]').forEach(el=>el.addEventListener('click', ()=>{
+      data.materials = data.materials.filter(x=>x.id!==Number(el.dataset.delmat));
+      save(); renderMaterialsRoot();
+    }));
+    root.querySelectorAll('[data-gotochapters]').forEach(el=>el.addEventListener('click', ()=>{
+      matView = {level:'chapters', subject: el.dataset.gotochapters};
+      renderMaterialsRoot();
+    }));
+  } else if(matView.level==='chapters'){
+    document.getElementById('backToMaterials').addEventListener('click', ()=>{
+      matView = {level:'materials'}; renderMaterialsRoot();
+    });
+    root.querySelectorAll('[data-gotoquestions]').forEach(el=>el.addEventListener('click', ()=>{
+      matView = {level:'questions', topicId: Number(el.dataset.gotoquestions)};
+      renderMaterialsRoot();
+    }));
+  } else if(matView.level==='questions'){
+    document.getElementById('backToChapters').addEventListener('click', ()=>{
+      matView = {level:'chapters', subject: matView.subject || data.topics.find(x=>x.id===matView.topicId).subject};
+      renderMaterialsRoot();
+    });
+    document.getElementById('addQuestionBtn').addEventListener('click', ()=>{
+      const memo = document.getElementById('qMemo').value.trim();
+      if(!memo) return;
+      const t = data.topics.find(x=>x.id===matView.topicId);
+      const maxId = data.questions.reduce((m,x)=>Math.max(m,x.id),0);
+      data.questions.unshift({id:maxId+1, subject:t.subject, chapter:t.name, topicId:t.id, memo, attempts:[], stage:0, lastStudied:null, nextReview:null});
+      save(); renderMaterialsRoot();
+    });
+    const importBtn = document.getElementById('importQuestionsBtn');
+    if(importBtn){
+      importBtn.addEventListener('click', ()=>{
+        const t = data.topics.find(x=>x.id===matView.topicId);
+        const labels = getImportableLabels(t);
+        let maxId = data.questions.reduce((m,x)=>Math.max(m,x.id),0);
+        labels.forEach(memo=>{
+          maxId++;
+          data.questions.push({id:maxId, subject:t.subject, chapter:t.name, topicId:t.id, memo, attempts:[], stage:0, lastStudied:null, nextReview:null});
+        });
+        save(); renderMaterialsRoot();
+      });
+    }
+    root.querySelectorAll('[data-openq]').forEach(el=>el.addEventListener('click', ()=>{
+      matView = {level:'question', topicId: matView.topicId, questionId: Number(el.dataset.openq)};
+      renderMaterialsRoot();
+    }));
+  } else if(matView.level==='question'){
+    document.getElementById('backToQuestions').addEventListener('click', ()=>{
+      matView = {level:'questions', topicId: matView.topicId};
+      renderMaterialsRoot();
+    });
+    root.querySelectorAll('[data-qg]').forEach(el=>el.addEventListener('click', ()=>{
+      logQuestionResult(Number(el.dataset.qid), el.dataset.qg, renderMaterialsRoot);
+    }));
+    root.querySelectorAll('[data-delq]').forEach(el=>el.addEventListener('click', ()=>{
+      data.questions = data.questions.filter(x=>x.id!==Number(el.dataset.delq));
+      matView = {level:'questions', topicId: matView.topicId};
+      save(); renderMaterialsRoot();
+    }));
+  }
+}
+
+
+function logQuestionResult(id, grade, cb){
   const q = data.questions.find(x=>x.id===id);
   if(!q) return;
-  q.attempts.push({date: todayStr(), correct});
-  applyStudyResult(q, correct);
+  q.attempts.push({date: todayStr(), rating: grade});
+  applyGrade(q, grade);
   save();
   if(cb) cb();
-}
-function renderQuestions(){
-  const container = document.getElementById('questionsBySubject');
-  if(data.questions.length===0){ container.innerHTML = '<div class="empty">まだ問題が登録されていません</div>'; return; }
-  const bySubject = {};
-  data.questions.forEach(q=>{ (bySubject[q.subject]=bySubject[q.subject]||[]).push(q); });
-  let html = '';
-  Object.keys(bySubject).forEach(subj=>{
-    html += `<h3 class="subject-head">${escapeHtml(subj)}</h3><div class="card">`;
-    bySubject[subj].forEach(q=>{
-      const total = q.attempts.length;
-      const correctCount = q.attempts.filter(a=>a.correct).length;
-      const rate = total ? Math.round(correctCount/total*100) : null;
-      const hist = q.attempts.slice(-8).map(a=>`<div class="hist-dot ${a.correct?'c':'x'}"></div>`).join('');
-      html += `<div class="q-item">
-        <div class="q-head">
-          <div>
-            <div class="q-label">${escapeHtml(q.chapter)}</div>
-            ${q.memo?`<div class="q-memo">${escapeHtml(q.memo)}</div>`:''}
-          </div>
-          <button class="icon-btn" data-delq="${q.id}">✕</button>
-        </div>
-        <div class="q-stats">${total ? `正答率 ${rate}% (${correctCount}/${total}回)` : 'まだ演習記録なし'}${q.nextReview?` ・ 次回復習 ${q.nextReview}`:''}</div>
-        <div class="q-history">${hist}</div>
-        <div class="q-actions">
-          <button class="pill ok" data-qc="${q.id}">〇 正解</button>
-          <button class="pill ng" data-qx="${q.id}">✕ 不正解</button>
-        </div>
-      </div>`;
-    });
-    html += '</div>';
-  });
-  container.innerHTML = html;
-  container.querySelectorAll('[data-qc]').forEach(el=>el.addEventListener('click', ()=>logQuestionResult(Number(el.dataset.qc), true, renderQuestions)));
-  container.querySelectorAll('[data-qx]').forEach(el=>el.addEventListener('click', ()=>logQuestionResult(Number(el.dataset.qx), false, renderQuestions)));
-  container.querySelectorAll('[data-delq]').forEach(el=>el.addEventListener('click', ()=>{
-    data.questions = data.questions.filter(x=>x.id!==Number(el.dataset.delq));
-    save(); renderQuestions();
-  }));
 }
 
 // ---------- SCORES ----------
@@ -815,16 +1033,20 @@ function renderWeak(){
   data.questions.forEach(q=>{
     const total = q.attempts.length;
     if(total===0) return;
-    const correct = q.attempts.filter(a=>a.correct).length;
-    bySubject[q.subject] = bySubject[q.subject] || {correct:0, total:0};
-    bySubject[q.subject].correct += correct;
+    const score = q.attempts.reduce((sum,a)=>{
+      if(a.rating==='o' || a.correct===true) return sum+1;
+      if(a.rating==='d') return sum+0.5;
+      return sum;
+    }, 0);
+    bySubject[q.subject] = bySubject[q.subject] || {score:0, total:0};
+    bySubject[q.subject].score += score;
     bySubject[q.subject].total += total;
   });
   const subjects = Object.keys(bySubject);
-  if(subjects.length===0){ card.innerHTML = '<div class="empty">問題演習を記録すると表示されます</div>'; return; }
-  subjects.sort((a,b)=> (bySubject[a].correct/bySubject[a].total) - (bySubject[b].correct/bySubject[b].total));
+  if(subjects.length===0){ card.innerHTML = '<div class="empty">設問演習を記録すると表示されます</div>'; return; }
+  subjects.sort((a,b)=> (bySubject[a].score/bySubject[a].total) - (bySubject[b].score/bySubject[b].total));
   card.innerHTML = subjects.map(s=>{
-    const pct = Math.round(bySubject[s].correct/bySubject[s].total*100);
+    const pct = Math.round(bySubject[s].score/bySubject[s].total*100);
     const color = pct<60 ? 'var(--red)' : (pct<80 ? 'var(--brass-deep)' : 'var(--green)');
     return `<div class="weak-bar-row"><div class="weak-label">${escapeHtml(s)}</div>
       <div class="weak-track"><div class="weak-fill" style="width:${pct}%; background:${color};"></div></div>
@@ -1005,7 +1227,7 @@ async function performInitialSync(){
     if(remote && remote.updatedAt && (!data.updatedAt || remote.updatedAt > data.updatedAt)){
       data = remote;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      renderHome(); renderTime(); renderTopics(); renderMaterials(); renderQuestions(); renderScores(); renderWeak(); renderPlan();
+      renderHome(); renderTime(); renderTopics(); renderMaterialsRoot(); renderScores(); renderWeak(); renderPlan();
       setSyncStatus('リモートの最新データを取得しました');
     } else {
       await pushToSheet();
